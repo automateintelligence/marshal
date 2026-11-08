@@ -35,12 +35,18 @@ Developed and tested on Linux and WSL. The usage recorder uses GNU `date` and `f
    one question at a time to fill every {{placeholder}}, and edit the files."*
 3. **Fill in `state/priorities.md` and `state/sessions.md`.** Delete the EXAMPLE rows in every `state/` file as you go.
    Edit `docs/naming.md` so the project codes (the `[PROJECTA]` part) match yours.
-4. **Start Marshal.** Run `claude` in this repo, preferably inside tmux (on a dev box or your own machine), and turn
+4. **Install the worker rules.** Every session Marshal watches should follow the same short rules (how to ask
+   you questions, what counts as your approval, review loops, wind-down). A project's `CLAUDE.md` only loads in
+   that project's own folder, so these rules must go into each user's global `~/.claude/CLAUDE.md`. Preview with
+   `scripts/install-worker-rules.sh` (dry run, writes nothing), then run `scripts/install-worker-rules.sh --apply`.
+   It inserts `docs/worker-rules.md` between marker lines and keeps a backup. Run it on every machine. An example
+   global file is in `docs/example-global-CLAUDE.md`.
+5. **Start Marshal.** Run `claude` in this repo, preferably inside tmux (on a dev box or your own machine), and turn
    on Remote Control (the `/remote-control` command in recent Claude Code versions) so you can answer from your phone. First message:
    *"Resume Marshal. Read docs/RESUME.md first."*
-5. **Start your other sessions in tmux windows** and name them per `docs/naming.md`
+6. **Start your other sessions in tmux windows** and name them per `docs/naming.md`
    (`[PROJECTA] BUILD: login page -srv`). Marshal finds them with `tmux ls`.
-6. **Paste the two loop prompts** into the Marshal session (below).
+7. **Paste the two loop prompts** into the Marshal session (below).
 
 Let Marshal read tmux without asking each time: add read-only rules to your Claude Code permission settings, for example
 `Bash(tmux ls*)`, `Bash(tmux list-windows *)` and `Bash(tmux capture-pane *)`. Leave `tmux send-keys` (how it messages
@@ -74,6 +80,9 @@ docs/RESUME.md            how to pick Marshal back up after a restart
 docs/decision-format.md   how Marshal asks you things (1a 2y 3n)
 docs/naming.md            how sessions are named: [PROJECT] INTENT: what -where
 docs/owner-agent-workflow.md  your model/effort router and review rules (example, edit)
+docs/worker-rules.md      the rules block every monitored session carries
+docs/example-global-CLAUDE.md  example personal ~/.claude/CLAUDE.md (edit)
+docs/codex-without-sandbox.md  running Codex where its sandbox cannot start
 docs/usage-recorder-spec.md   why the budget recorder works the way it does
 docs/specs/               design of the optional bus
 state/                    everything Marshal knows (templates with one EXAMPLE line each)
@@ -82,6 +91,7 @@ state/                    everything Marshal knows (templates with one EXAMPLE l
   projects.md repos.md incidents.md morning-brief-template.md bus.md
 scripts/usage/            hourly budget reading from the statusline (no model call), with tests
 scripts/bus/              OPTIONAL: messages between several Marshals through one GitHub issue, with tests
+scripts/install-worker-rules.sh  insert docs/worker-rules.md into ~/.claude/CLAUDE.md (dry run first; test_install_worker_rules.sh)
 scripts/install-user-skills.sh   copy the vetted skills into ~/.claude/skills
 .claude/skills/           grill-with-docs, grilling, domain-modeling, handoff (third party, MIT, see SOURCES.md)
 .claude/settings.json     hook for the optional bus (does nothing until the bus is set up)
@@ -102,6 +112,7 @@ scripts/install-user-skills.sh   copy the vetted skills into ~/.claude/skills
 ```
 python3 -I scripts/usage/test_usage_recorder.py
 python3 -I scripts/bus/test_bus.py
+sh scripts/test_install_worker_rules.sh
 ```
 
 No network and no real clock: both suites use fakes and fixed times.
@@ -122,7 +133,7 @@ These cost real time. Marshal's rules in `CLAUDE.md` and `state/checklist.md` al
    the environment variable `GSTACK_CODEX_NO_SANDBOX=1` (read by the gstack `/codex` skill), then call
    `codex exec --sandbox danger-full-access - < prompt-file`. The prompt file carries a read-only instruction ("do not
    change files"), and you check `git diff` afterwards to prove nothing changed. The owner must add these to their own
-   settings, because an agent cannot edit its own permissions:
+   settings, because an agent cannot edit its own permissions (details: `docs/codex-without-sandbox.md`):
    ```json
    { "permissions": { "allow": ["Bash(codex exec *)", "Bash(codex review *)"] },
      "env": { "GSTACK_CODEX_NO_SANDBOX": "1" } }
@@ -144,3 +155,6 @@ These cost real time. Marshal's rules in `CLAUDE.md` and `state/checklist.md` al
 13. **Poll cloud or Remote Control sessions by id.** A list-everything call can return tens of thousands of tokens of other
     sessions' records.
 14. **`/loop` jobs are session-only.** They die with the session. After any restart, check that they exist.
+15. **Unsent text the owner typed is their decision.** Relay it by message. Never type keystrokes into a draft they are still editing.
+16. **Read a session's full output on a sweep, not only its input line.** Stalled sessions (API errors, cut-off replies) get a nudge without asking.
+17. **The auto-mode checker may refuse a relay** that authorizes a deploy, a settings change or a close. Do not work around it; give the owner the exact text to send themselves.
