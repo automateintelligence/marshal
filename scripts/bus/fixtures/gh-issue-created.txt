@@ -1,0 +1,16 @@
+HTTP/2.0 201 Created
+Content-Type: application/json; charset=utf-8
+X-Ratelimit-Limit: 5000
+X-Ratelimit-Remaining: 4990
+
+{
+  "number": 8,
+  "title": "Marshal bus (after #7)",
+  "state": "open",
+  "html_url": "https://github.com/example-owner/marshal/issues/8",
+  "labels": [
+    {
+      "name": "marshal-bus"
+    }
+  ]
+}

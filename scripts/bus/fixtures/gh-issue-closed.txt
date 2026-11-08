@@ -1,0 +1,15 @@
+HTTP/2.0 200 OK
+Content-Type: application/json; charset=utf-8
+X-Ratelimit-Limit: 5000
+X-Ratelimit-Remaining: 4990
+
+{
+  "number": 7,
+  "title": "Marshal bus",
+  "state": "closed",
+  "labels": [
+    {
+      "name": "marshal-bus"
+    }
+  ]
+}

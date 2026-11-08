@@ -1,0 +1,29 @@
+{
+  "url": "https://api.github.com/repos/example-owner/marshal/issues/comments/1001",
+  "html_url": "https://github.com/example-owner/marshal/issues/7#issuecomment-1001",
+  "issue_url": "https://api.github.com/repos/example-owner/marshal/issues/7",
+  "id": 1001,
+  "node_id": "IC_kwDOtest1001",
+  "user": {
+    "login": "example-user",
+    "id": 1,
+    "type": "User"
+  },
+  "created_at": "2026-10-26T17:05:14Z",
+  "updated_at": "2026-10-26T17:05:14Z",
+  "author_association": "OWNER",
+  "body": "To: cloud\nFrom: laptop\nIn-reply-to: none\nSent: 2026-10-26T17:05:12Z\n\nDev server move: do you still hold the evening brief?",
+  "reactions": {
+    "url": "https://api.github.com/repos/example-owner/marshal/issues/comments/1001/reactions",
+    "total_count": 0,
+    "+1": 0,
+    "-1": 0,
+    "laugh": 0,
+    "hooray": 0,
+    "confused": 0,
+    "heart": 0,
+    "rocket": 0,
+    "eyes": 0
+  },
+  "performed_via_github_app": null
+}
