@@ -1,0 +1,27 @@
+{
+  "session_id": "00000000-0000-0000-0000-000000000000",
+  "transcript_path": "/example/.claude/projects/example/00000000.jsonl",
+  "cwd": "/example/project",
+  "model": {
+    "id": "claude-sonnet-5-5",
+    "display_name": "Sonnet 5.5"
+  },
+  "workspace": {
+    "current_dir": "/example/project",
+    "project_dir": "/example/project"
+  },
+  "context_window": {
+    "remaining_percentage": 71
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 3,
+      "resets_at": 1793139599
+    },
+    "seven_day": {
+      "used_percentage": 15,
+      "resets_at": 1793595599
+    }
+  },
+  "captured_at": "2026-10-27T19:40:00Z"
+}
