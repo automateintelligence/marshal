@@ -17,6 +17,16 @@ Marshal has two parts:
 1. **The plugin** (installed from the marketplace into Claude Code). It goes to EVERY session you run, in any repo: a SessionStart hook hands each session the worker rules in `docs/worker-rules.md` (how to ask you questions, review loops, reporting, naming, no flaky tests), so you do not edit `~/.claude/CLAUDE.md`. It also carries four skills written by Matt Pocock and copied unmodified from his repo [mattpocock/skills](https://github.com/mattpocock/skills) (MIT): `/marshal:handoff`, `/marshal:grilling`, `/marshal:grill-with-docs` and `/marshal:domain-modeling`; see Credits. It adds the command `/marshal:init` that creates your workspace.
 2. **Your Marshal workspace.** Your own repo, PRIVATE, holding `CLAUDE.md`, `state/` and `docs/` for the Marshal session itself. Create it with `/marshal:init`, or use the public Marshal repo (github.com/automateintelligence/marshal) as a template.
 
+## How it works day to day
+
+An example from the owner who built it, who runs three to seven projects at once.
+
+- **The setup.** Each project has one or more Claude Code sessions in tmux on a dev server, named like `[PROJ] PLAN: video pipeline -server`. One more session is Marshal. The owner mostly talks to Marshal, from the terminal or a phone, and only drops into a project session when they want to.
+- **The rhythm.** Every 30 minutes Marshal checks every session; every hour it runs its checklist. When a session finishes something, asks a question or goes quiet, Marshal finds out and acts.
+- **Saving time.** Easy calls Marshal makes itself, inside fences the owner set (nothing merged to main, nothing live, no loosened checks), and records each one where the owner can reverse it. Harder calls get a second opinion from Codex first. Only real decisions reach the owner, one short numbered list, in project priority order, answerable as "1a 2y 3n". Marshal never stacks a new question on an unanswered one, so the owner is not interrupted.
+- **Pacing the weekly limit.** Marshal reads usage every hour and keeps to a daily share (about one seventh of the week per day). When a day runs hot it parks the lowest-priority work at a safe point; when the week is ending with budget left, it gives sessions more room so the limit is used, not wasted. Long experiments keep running through any stop.
+- **Focus across projects.** The owner keeps one picture of everything without holding it in their head: what is ready to merge, what waits on them, and why. Work keeps moving while they are in class or asleep; a morning list says what happened and what needs them. In one Saturday, six project sessions turned out about 45 reviewed pull requests this way, while the owner was in class for most of it.
+
 ## Install
 
 ### Claude Code
@@ -176,7 +186,7 @@ scripts/install-git-hooks.sh   install the push guard into a repo (template user
 scripts/make-state-manifest.sh regenerate the manifest after editing state/
 scripts/install-worker-rules.sh  insert docs/worker-rules.md into ~/.claude/CLAUDE.md (dry run first; test_install_worker_rules.sh)
 scripts/install-user-skills.sh   copy the vetted skills into ~/.claude/skills (template clones without the plugin)
-.claude/skills/           grill-with-docs, grilling, domain-modeling, handoff (third party, MIT, see SOURCES.md); the plugin ships them
+.claude/skills/           grill-with-docs, grilling, domain-modeling, handoff by Matt Pocock (mattpocock/skills, MIT, see SOURCES.md and Credits); the plugin ships them
 .claude/settings.json     hook for the optional bus (does nothing until the bus is set up)
 .github/workflows/guard-state.yml  fails a PR here that changes state/ without the template-change label
 ```
