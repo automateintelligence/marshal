@@ -1,6 +1,6 @@
 ---
 description: Create your Marshal workspace (a new private-repo-to-be holding Marshal's rules and state/)
-argument-hint: "[folder]  (for example ~/marshal-workspace)"
+argument-hint: "[folder]  (for example ~/marshal)"
 allowed-tools: Bash(sh *init-workspace.sh*)
 ---
 
@@ -8,7 +8,7 @@ Set up a Marshal workspace: the owner's own folder and own git repository for th
 
 Requested folder: `$ARGUMENTS`
 
-1. **Folder.** If the requested folder is empty, ask the owner where to put it and suggest `~/marshal-workspace`. If the folder text contains shell metacharacters (`;`, `|`, `&`, backticks, `$(`), refuse it and say why.
+1. **Folder.** If the requested folder is empty, ask the owner where to put it and suggest `~/marshal`. If the folder text contains shell metacharacters (`;`, `|`, `&`, backticks, `$(`), refuse it and say why.
 
 2. **Optional pieces.** Ask two questions in plain words, yes/no, recommended answer first, with the consequence of each:
    - Copy the budget recorder (`--with-usage`)? Recommend no for now: it needs `jq`, GNU `date`, `flock` and a cron line to be useful. Without it Marshal asks the owner to paste `/usage` about once a day. Running this command again later with the flag adds it without touching files already there.

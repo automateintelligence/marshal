@@ -42,7 +42,7 @@ target=$(CDPATH= cd -- "$folder" && pwd -P)
 
 case "$target/" in
     "$src_root"/*)
-        echo "Refusing: $target is inside the Marshal plugin ($src_root). Pick a folder of your own, for example ~/marshal-workspace." >&2
+        echo "Refusing: $target is inside the Marshal plugin ($src_root). Pick a folder of your own, for example ~/marshal." >&2
         exit 2 ;;
 esac
 
