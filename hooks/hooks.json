@@ -1,0 +1,17 @@
+{
+  "description": "Marshal worker rules: inject docs/worker-rules.md into every session as additionalContext, unless ~/.claude/CLAUDE.md already carries the marker block",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/session-start-worker-rules.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

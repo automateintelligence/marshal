@@ -1,0 +1,13 @@
+{
+  "name": "marshal",
+  "version": "0.1.0",
+  "description": "Marshal: a manager session for your other Claude Code sessions. The plugin puts shared worker rules and the grilling and handoff skills in every session, and /marshal:init creates your private Marshal workspace. Claude Code only. OpenAI Codex: not supported yet.",
+  "author": {
+    "name": "Jeffrey A. Daniels"
+  },
+  "homepage": "https://github.com/automateintelligence/marshal",
+  "repository": "https://github.com/automateintelligence/marshal",
+  "license": "MIT",
+  "keywords": ["marshal", "orchestration", "sessions", "worker-rules", "handoff", "grilling"],
+  "skills": "./.claude/skills"
+}
