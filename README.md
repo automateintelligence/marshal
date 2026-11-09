@@ -14,7 +14,7 @@ Marshal:
 
 Marshal has two parts:
 
-1. **The plugin** (installed from the marketplace into Claude Code). It goes to EVERY session you run, in any repo: a SessionStart hook hands each session the worker rules in `docs/worker-rules.md` (how to ask you questions, review loops, reporting, naming, no flaky tests), so you do not edit `~/.claude/CLAUDE.md`. It also carries the skills `/marshal:handoff`, `/marshal:grilling`, `/marshal:grill-with-docs` and `/marshal:domain-modeling`, and the command `/marshal:init` that creates your workspace.
+1. **The plugin** (installed from the marketplace into Claude Code). It goes to EVERY session you run, in any repo: a SessionStart hook hands each session the worker rules in `docs/worker-rules.md` (how to ask you questions, review loops, reporting, naming, no flaky tests), so you do not edit `~/.claude/CLAUDE.md`. It also carries four skills written by Matt Pocock and copied unmodified from his repo [mattpocock/skills](https://github.com/mattpocock/skills) (MIT): `/marshal:handoff`, `/marshal:grilling`, `/marshal:grill-with-docs` and `/marshal:domain-modeling`; see Credits. It adds the command `/marshal:init` that creates your workspace.
 2. **Your Marshal workspace.** Your own repo, PRIVATE, holding `CLAUDE.md`, `state/` and `docs/` for the Marshal session itself. Create it with `/marshal:init`, or use the public Marshal repo (github.com/automateintelligence/marshal) as a template.
 
 ## Install
@@ -247,3 +247,7 @@ These cost real time. Marshal's rules in `CLAUDE.md` and `state/checklist.md` al
 15. **Unsent text the owner typed is their decision.** Relay it by message. Never type keystrokes into a draft they are still editing.
 16. **Read a session's full output on a sweep, not only its input line.** Stalled sessions (API errors, cut-off replies) get a nudge without asking.
 17. **The auto-mode checker may refuse a relay** that authorizes a deploy, a settings change or a close. Do not work around it; give the owner the exact text to send themselves.
+
+## Credits
+
+- **Matt Pocock** wrote the four skills Marshal ships: `grill-with-docs`, `grilling`, `domain-modeling` (with its `GLOSSARY-FORMAT.md` and `ADR-FORMAT.md`) and `handoff`. They come from his repository [github.com/mattpocock/skills](https://github.com/mattpocock/skills) and are copied unmodified under its MIT license, Copyright (c) 2026 Matt Pocock. The license text travels with the copies in `.claude/skills/LICENSE-mattpocock-skills.txt`, and `.claude/skills/SOURCES.md` records exactly which upstream folders each skill came from and when. The grilling approach (rounds of numbered questions with a recommended answer, keeping a glossary and decision records up to date as you go) is his. Marshal's only addition is the rule that every question stays answerable as y/n or a/b/c. If these skills help you, star and follow his repo; later versions land there first.
