@@ -1,0 +1,38 @@
+# Fails a pull request that changes files under state/ unless the PR has the label `template-change`.
+# state/ in this repo holds only the shipped templates. A user's own Marshal state belongs in their
+# own private repo. The job runs only in the public repo itself, so a private copy made from this
+# template is not affected.
+name: guard-state
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  guard-state:
+    if: github.repository == 'automateintelligence/marshal'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fail when state/ changed without the template-change label
+        env:
+          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'template-change') }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA" -- state/)
+          if [ -z "$changed" ]; then
+            echo "No files under state/ changed."
+            exit 0
+          fi
+          if [ "$HAS_LABEL" = "true" ]; then
+            echo "state/ changed, and the PR has the template-change label:"
+            echo "$changed"
+            exit 0
+          fi
+          echo "::error::This PR changes state/. Your Marshal state belongs in your own private repo, not here. See README: Install."
+          echo "Changed files under state/:"
+          echo "$changed"
+          exit 1

@@ -1,0 +1,129 @@
+#!/bin/sh
+# Marshal privacy guard: a git pre-push hook for a Marshal workspace.
+#
+# Your workspace's state/ holds notes about your work. It must live in your own PRIVATE repo.
+# This hook refuses a push when:
+#   1. the remote is the public Marshal repo (github.com/automateintelligence/marshal, with or
+#      without .git, https or ssh, any letter case), or
+#   2. GitHub reports the remote repo as PUBLIC and state/ differs from the shipped templates
+#      (checked on every commit being pushed that touches state/, and on the tip).
+#      The templates are listed in scripts/git-hooks/state-templates.manifest (git blob ids).
+#      Without the manifest, any state/ file counts as different (fails closed).
+#
+# The visibility check needs the GitHub CLI (gh). If gh is missing, or it cannot answer (not logged
+# in, no network), only check 1 applies and the hook prints a warning. Remotes that are not on
+# github.com (a local path, another host) are not checked against GitHub.
+#
+# Installed by scripts/install-git-hooks.sh into .git/hooks/pre-push. Git calls it as
+#   pre-push <remote-name> <remote-url>   with lines "<local ref> <local sha> <remote ref> <remote sha>" on stdin.
+# Also usable as:  pre-push --is-public-url URL   (exit 0 if URL is the public Marshal repo, else 1).
+# MARSHAL_GH names the gh command (default: gh); tests use it.
+# Exit codes: 0 push allowed, 1 push refused.
+
+set -u
+
+PUBLIC_REPO='github.com/automateintelligence/marshal'
+MANIFEST_REL='scripts/git-hooks/state-templates.manifest'
+
+# host/owner/repo in lower case: no scheme, user info, port, "www.", trailing slash or ".git".
+normalize_url() {
+    printf '%s' "$1" | LC_ALL=C tr 'A-Z' 'a-z' | sed -E \
+        -e 's#^[a-z][a-z0-9+.-]*://##' \
+        -e 's#^[^/@]*@##' \
+        -e 's#^([^/:]+):[0-9]+/#\1/#' \
+        -e 's#^([^/:]+):#\1/#' \
+        -e 's#^www\.##' \
+        -e 's#/+$##' -e 's#\.git$##' -e 's#/+$##'
+}
+
+is_public_marshal() {
+    [ "$(normalize_url "$1")" = "$PUBLIC_REPO" ]
+}
+
+if [ "${1:-}" = "--is-public-url" ]; then
+    is_public_marshal "${2:-}"
+    exit $?
+fi
+
+remote_name=${1:-}
+url=${2:-}
+
+if is_public_marshal "$url"; then
+    {
+        echo "PUSH REFUSED (Marshal privacy guard)."
+        echo "The remote '$remote_name' is the PUBLIC Marshal repo ($PUBLIC_REPO)."
+        echo "Your Marshal state/ holds notes about your work and must never go there."
+        echo "Push to your own PRIVATE repo instead. To make one from this folder:"
+        echo "  gh repo create <you>/my-marshal --private --source . --remote github --push"
+    } >&2
+    exit 1
+fi
+
+norm=$(normalize_url "$url")
+case "$norm" in
+    github.com/*) ;;
+    *) exit 0 ;;                       # not on github.com: nothing to ask GitHub
+esac
+owner_repo=${norm#github.com/}
+case "$owner_repo" in
+    */*/*|*/|/*|'') exit 0 ;;          # not a plain owner/repo address
+esac
+
+gh_bin=${MARSHAL_GH:-gh}
+if ! command -v "$gh_bin" > /dev/null 2>&1; then
+    echo "marshal pre-push: WARNING: the GitHub CLI (gh) is not installed, so I cannot check whether $norm is public." >&2
+    echo "marshal pre-push: Only the public Marshal repo is blocked. Make sure $norm is PRIVATE." >&2
+    exit 0
+fi
+
+if command -v timeout > /dev/null 2>&1; then
+    visibility=$(timeout 20 "$gh_bin" repo view "github.com/$owner_repo" --json visibility --jq .visibility 2>/dev/null)
+else
+    visibility=$("$gh_bin" repo view "github.com/$owner_repo" --json visibility --jq .visibility 2>/dev/null)
+fi
+case "$visibility" in
+    PUBLIC) ;;
+    PRIVATE|INTERNAL) exit 0 ;;
+    *)
+        echo "marshal pre-push: WARNING: gh could not tell me whether $norm is public (not logged in, or no network)." >&2
+        echo "marshal pre-push: Only the public Marshal repo is blocked. Make sure $norm is PRIVATE." >&2
+        exit 0
+        ;;
+esac
+
+# The remote is public. Allow the push only when state/ is still exactly the shipped templates.
+top=$(git rev-parse --show-toplevel 2>/dev/null) || top=.
+expected=''
+if [ -r "$top/$MANIFEST_REL" ]; then
+    expected=$(LC_ALL=C sort "$top/$MANIFEST_REL")
+fi
+
+differs=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+    case "$local_sha" in *[!0]*) ;; *) continue ;; esac     # all zeros: a branch deletion
+    range=$local_sha
+    case "$remote_sha" in
+        *[!0]*) git cat-file -e "$remote_sha^{commit}" 2>/dev/null && range="$remote_sha..$local_sha" ;;
+    esac
+    commits="$local_sha $(git rev-list --full-history "$range" -- state/ 2>/dev/null)"
+    for c in $commits; do
+        listing=$(git ls-tree -r "$c" -- state/ 2>/dev/null \
+            | awk -F'\t' '{ split($1, a, " "); print a[3] "  " $2 }' | LC_ALL=C sort)
+        [ -n "$listing" ] || continue                       # no state/ files in this commit
+        if [ "$listing" != "$expected" ]; then
+            differs=1
+            break 2
+        fi
+    done
+done
+
+if [ "$differs" -eq 1 ]; then
+    {
+        echo "PUSH REFUSED (Marshal privacy guard)."
+        echo "$norm is a PUBLIC repo on GitHub, and state/ here has been filled in"
+        echo "(it differs from the shipped templates). state/ holds notes about your work."
+        echo "Make that repo private on GitHub, or push to a different PRIVATE repo."
+    } >&2
+    exit 1
+fi
+exit 0
