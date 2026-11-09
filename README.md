@@ -1,4 +1,4 @@
-# Marshal starter
+# Marshal
 
 Marshal is one Claude Code session that manages your other Claude Code sessions. You keep doing the work in
 as many sessions as you like (different projects, different repos, tmux windows on a server or local). 
@@ -12,7 +12,79 @@ Marshal:
 - keeps what it knows in `state/*.md`, committed to git, so a restart or a new machine loses nothing,
 - never writes product code itself.
 
-This repository is a template. Clone it, fill in your own facts (about 15 minutes), and you have your own Marshal.
+Marshal has two parts:
+
+1. **The plugin** (installed from the marketplace into Claude Code). It goes to EVERY session you run, in any repo: a SessionStart hook hands each session the worker rules in `docs/worker-rules.md` (how to ask you questions, review loops, reporting, naming, no flaky tests), so you do not edit `~/.claude/CLAUDE.md`. It also carries the skills `/marshal:handoff`, `/marshal:grilling`, `/marshal:grill-with-docs` and `/marshal:domain-modeling`, and the command `/marshal:init` that creates your workspace.
+2. **Your Marshal workspace.** Your own repo, PRIVATE, holding `CLAUDE.md`, `state/` and `docs/` for the Marshal session itself. Create it with `/marshal:init`, or use the public Marshal repo (github.com/automateintelligence/marshal) as a template.
+
+## Install
+
+### Claude Code
+
+1. Add the marketplace (once):
+
+   ```
+   /plugin marketplace add automateintelligence/marketplace
+   ```
+
+2. Install the plugin. When Claude Code asks for a scope, pick **user**, so every session you run gets it:
+
+   ```
+   /plugin install marshal@automateintelligence
+   ```
+
+3. Restart Claude Code, or run `/reload-plugins`.
+
+4. Create your workspace: a new folder with Marshal's rules and your `state/`. Claude copies the templates, runs `git init`, installs a push guard and walks you through the `{{placeholders}}`:
+
+   ```
+   /marshal:init ~/marshal-workspace
+   ```
+
+5. Put the workspace in your own PRIVATE repo (replace `<you>` with your GitHub name):
+
+   ```
+   cd ~/marshal-workspace && git init && git add -A && git commit -m "Marshal workspace" && gh repo create <you>/my-marshal --private --source . --remote github --push
+   ```
+
+   Never fork the public Marshal repo for your workspace (a fork of a public repo is public), and never push your filled-in `state/` to the public Marshal repo.
+
+6. Start Marshal in that folder with Remote Control (`<where>` is `local`, `wsl`, `srv` or `cloud`), then paste the two loop prompts from [The two loops](https://github.com/automateintelligence/marshal#the-two-loops):
+
+   ```
+   cd ~/marshal-workspace && claude --remote-control '[MSL] OPS: Marshal -<where>'
+   ```
+
+Template route, instead of steps 4 and 5 (the public Marshal repo is the template; the plugin from steps 1 to 3 still gives every session the worker rules):
+
+```
+gh repo create <you>/my-marshal --private --template automateintelligence/marshal --clone
+cd my-marshal && sh scripts/install-git-hooks.sh
+```
+
+Then follow [Without the plugin](https://github.com/automateintelligence/marshal#without-the-plugin-use-this-repo-as-a-template) from step 2.
+
+Then start your other sessions in tmux windows and name them per `docs/naming.md` (`[PROJECTA] BUILD: login page -srv`). Marshal finds them with `tmux ls`.
+Let Marshal read tmux without asking each time: add read-only rules to your Claude Code permission settings, for example
+`Bash(tmux ls*)`, `Bash(tmux list-windows *)` and `Bash(tmux capture-pane *)`. Leave `tmux send-keys` (how it messages
+a session) on ask until you trust it.
+
+### OpenAI Codex
+
+OpenAI Codex: not supported yet. See [ROADMAP.md](https://github.com/automateintelligence/marshal/blob/main/ROADMAP.md).
+
+## Keeping your state private
+
+Your filled-in `state/` holds notes about your work. It must live only in your own PRIVATE repo.
+
+- Make your own private repo (install step 5, or the template route). Never fork the public Marshal repo for your workspace: a fork of a public repo is public. Never push your filled-in `state/` to the public Marshal repo.
+- `/marshal:init` makes a fresh repo with no history and no remote, and installs a git `pre-push` guard (`scripts/git-hooks/pre-push`; template users run `sh scripts/install-git-hooks.sh`). The guard refuses any push to github.com/automateintelligence/marshal (https or ssh, with or without `.git`). It also refuses a push to any repo GitHub reports as public when `state/` differs from the shipped templates. That check needs the `gh` CLI; without `gh` the guard blocks only the public Marshal repo and prints a warning.
+- In the public Marshal repo, a GitHub Actions check (`.github/workflows/guard-state.yml`) fails any pull request that changes `state/` unless it carries the `template-change` label.
+
+## Optional: permanent worker rules, Codex second opinion
+
+- **Permanent worker rules instead of the hook.** The plugin already hands the rules to every session. If you prefer a permanent block in `~/.claude/CLAUDE.md` (it also works without the plugin), run from your workspace: `sh scripts/install-worker-rules.sh` (dry run, writes nothing), then `sh scripts/install-worker-rules.sh --apply`. It keeps a backup, and the plugin's hook then stays silent so nothing is doubled.
+- **Codex as a second opinion** on a machine where Codex's own sandbox cannot start: see [docs/codex-without-sandbox.md](docs/codex-without-sandbox.md).
 
 ## What you need
 
@@ -20,39 +92,39 @@ This repository is a template. Clone it, fill in your own facts (about 15 minute
 |---|---|
 | [Claude Code](https://claude.com/claude-code) | Marshal and the sessions it watches |
 | `tmux` | Marshal reads other sessions' screens (`tmux capture-pane`) and can message them |
-| `git` and the `gh` CLI (logged in: `gh auth login`) | state is committed and pushed; PRs and issues are read with `gh` |
-| `python3` | the usage-recorder and bus tests, and the optional bus |
+| `git` and the `gh` CLI (logged in: `gh auth login`) | state is committed and pushed to your private repo; PRs and issues are read with `gh`; the push guard asks `gh` whether a repo is public |
+| `sh`, `awk`, `sed`, `grep` | the plugin's SessionStart hook and `/marshal:init` (POSIX, no other dependencies) |
+| `python3` | the tests, and the optional bus |
 | `jq`, GNU `date`, `flock`, `cron` | the optional usage recorder (hourly budget reading) |
 | Codex CLI (optional) | a second opinion before Marshal decides for you (`state/checklist.md` section 12) |
 
 Developed and tested on Linux and WSL. The usage recorder uses GNU `date` and `flock`, which stock macOS does not have.
 
-## Quick start
+## Without the plugin: use this repo as a template
+
+Use this when you do not want the plugin for the workspace (or after the template route in the install steps above).
 
 1. **Make your own PRIVATE repo from this one.** Marshal commits and pushes `state/`, which will hold notes about
-   your work. Do not put that in a public repo. Clone your private copy and `cd` into it.
+   your work. `gh repo create <you>/my-marshal --private --template automateintelligence/marshal --clone`, then
+   `cd my-marshal && sh scripts/install-git-hooks.sh` (the push guard). Cloning this repo and pointing its remote at your
+   own private repo also works; run `sh scripts/install-git-hooks.sh` there too. Never fork this repo for your workspace and never push
+   your state to it (see "Keeping your state private").
 2. **Fill in the placeholders.** `grep -rn '{{' CLAUDE.md state docs` lists them. The important ones are in
    `CLAUDE.md`: your name, your timezone, your daily schedule, your weekly-limit reset time, your project ranking.
    Or let Claude do it: start `claude` in the repo and say *"Read README.md and CLAUDE.md, then interview me
    one question at a time to fill every {{placeholder}}, and edit the files."*
 3. **Fill in `state/priorities.md` and `state/sessions.md`.** Delete the EXAMPLE rows in every `state/` file as you go.
    Edit `docs/naming.md` so the project codes (the `[PROJECTA]` part) match yours.
-4. **Install the worker rules.** Every session Marshal watches should follow the same short rules (how to ask
-   you questions, what counts as your approval, review loops, wind-down). A project's `CLAUDE.md` only loads in
-   that project's own folder, so these rules must go into each user's global `~/.claude/CLAUDE.md`. Preview with
-   `scripts/install-worker-rules.sh` (dry run, writes nothing), then run `scripts/install-worker-rules.sh --apply`.
-   It inserts `docs/worker-rules.md` between marker lines and keeps a backup. Run it on every machine. An example
-   global file is in `docs/example-global-CLAUDE.md`.
+4. **Install the worker rules** (skip this when the plugin is installed: its hook does it). Every session Marshal watches
+   should follow the same short rules (how to ask you questions, what counts as your approval, review loops, wind-down).
+   A project's `CLAUDE.md` only loads in that project's own folder, so these rules must go into each user's global
+   `~/.claude/CLAUDE.md`. Preview with `scripts/install-worker-rules.sh` (dry run, writes nothing), then run
+   `scripts/install-worker-rules.sh --apply`. It inserts `docs/worker-rules.md` between marker lines and keeps a backup.
+   Run it on every machine. An example global file is in `docs/example-global-CLAUDE.md`.
 5. **Start Marshal.** Run `claude` in this repo, preferably inside tmux (on a dev box or your own machine), and turn
    on Remote Control (the `/remote-control` command in recent Claude Code versions) so you can answer from your phone. First message:
    *"Resume Marshal. Read docs/RESUME.md first."*
-6. **Start your other sessions in tmux windows** and name them per `docs/naming.md`
-   (`[PROJECTA] BUILD: login page -srv`). Marshal finds them with `tmux ls`.
-7. **Paste the two loop prompts** into the Marshal session (below).
-
-Let Marshal read tmux without asking each time: add read-only rules to your Claude Code permission settings, for example
-`Bash(tmux ls*)`, `Bash(tmux list-windows *)` and `Bash(tmux capture-pane *)`. Leave `tmux send-keys` (how it messages
-a session) on ask until you trust it.
+6. **Start your other sessions in tmux windows** (see above), then **paste the two loop prompts** into the Marshal session (below).
 
 ## The two loops
 
@@ -76,6 +148,10 @@ written for, after 7 days). After any restart, list the scheduled jobs and paste
 ## What is in here
 
 ```
+.claude-plugin/plugin.json  the plugin manifest (name: marshal)
+hooks/hooks.json          SessionStart hook: hands the worker rules to every session
+commands/init.md          /marshal:init: creates your workspace
+ROADMAP.md                what is planned, including Codex
 CLAUDE.md                 Marshal's rules (template: fill the placeholders)
 GLOSSARY.md               Marshal's own terms
 docs/RESUME.md            how to pick Marshal back up after a restart
@@ -93,10 +169,16 @@ state/                    everything Marshal knows (templates with one EXAMPLE l
   projects.md repos.md incidents.md morning-brief-template.md bus.md
 scripts/usage/            hourly budget reading from the statusline (no model call), with tests
 scripts/bus/              OPTIONAL: messages between several Marshals through one GitHub issue, with tests
+scripts/session-start-worker-rules.sh  the hook's script: prints the worker rules as JSON, nothing if ~/.claude/CLAUDE.md already has them
+scripts/init-workspace.sh      what /marshal:init runs: copies the templates, git init, installs the push guard
+scripts/git-hooks/pre-push     the push guard (and state-templates.manifest, the list of shipped state/ files)
+scripts/install-git-hooks.sh   install the push guard into a repo (template users run it once)
+scripts/make-state-manifest.sh regenerate the manifest after editing state/
 scripts/install-worker-rules.sh  insert docs/worker-rules.md into ~/.claude/CLAUDE.md (dry run first; test_install_worker_rules.sh)
-scripts/install-user-skills.sh   copy the vetted skills into ~/.claude/skills
-.claude/skills/           grill-with-docs, grilling, domain-modeling, handoff (third party, MIT, see SOURCES.md)
+scripts/install-user-skills.sh   copy the vetted skills into ~/.claude/skills (template clones without the plugin)
+.claude/skills/           grill-with-docs, grilling, domain-modeling, handoff (third party, MIT, see SOURCES.md); the plugin ships them
 .claude/settings.json     hook for the optional bus (does nothing until the bus is set up)
+.github/workflows/guard-state.yml  fails a PR here that changes state/ without the template-change label
 ```
 
 ## Optional pieces
@@ -106,8 +188,9 @@ scripts/install-user-skills.sh   copy the vetted skills into ~/.claude/skills
   statusline) and `scripts/usage/usage-push.sh` (one hourly cron line). `usage-push.sh` pushes to the git remote
   `origin` on `main`; set `MARSHAL_REMOTE` and `MARSHAL_BRANCH` for others. Why it is built this way:
   `docs/usage-recorder-spec.md`. Without it, Marshal asks you to paste `/usage` at most once a day and runs in the LIGHT tier.
-- **Skills.** `scripts/install-user-skills.sh` copies the skills in `.claude/skills/` into `~/.claude/skills` so they work in every project.
+- **Skills.** The plugin ships them as `/marshal:handoff`, `/marshal:grilling`, `/marshal:grill-with-docs` and `/marshal:domain-modeling`. In a template clone without the plugin, `scripts/install-user-skills.sh` copies the skills in `.claude/skills/` into `~/.claude/skills` so they work in every project.
 - **Bus.** Only if you run more than one Marshal (say, laptop and server). See `scripts/bus/README.md`.
+- **Adding the recorder or the bus to a workspace made by `/marshal:init`:** run `/marshal:init <same folder>` again and answer yes. It copies only the missing files and never overwrites yours (`scripts/init-workspace.sh <folder> --with-usage` or `--with-bus` does the same from a shell).
 
 ## Tests
 
@@ -115,9 +198,13 @@ scripts/install-user-skills.sh   copy the vetted skills into ~/.claude/skills
 python3 -I scripts/usage/test_usage_recorder.py
 python3 -I scripts/bus/test_bus.py
 sh scripts/test_install_worker_rules.sh
+sh scripts/test_session_start_hook.sh
+sh scripts/test_init_workspace.sh
+sh scripts/test_git_guard.sh
+sh scripts/test_guard_state_workflow.sh
 ```
 
-No network and no real clock: both suites use fakes and fixed times.
+No network and no real clock: the suites use fakes, local repositories and fixed times.
 
 ## Lessons learned
 
